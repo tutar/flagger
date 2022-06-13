@@ -21,9 +21,9 @@ import (
 	"hash/fnv"
 
 	"github.com/davecgh/go-spew/spew"
-	"k8s.io/apimachinery/pkg/util/rand"
-
 	flaggerv1 "github.com/fluxcd/flagger/pkg/apis/flagger/v1beta1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 // hasSpecChanged computes the hash of the spec and compares it with the
@@ -33,8 +33,13 @@ func hasSpecChanged(cd *flaggerv1.Canary, spec interface{}) (bool, error) {
 	if cd.Status.LastAppliedSpec == "" {
 		return true, nil
 	}
-
-	newHash := computeHash(spec)
+	podSpec, ok := spec.(corev1.PodTemplateSpec)
+	newHash := ""
+	if ok {
+		newHash = computeHash(podSpec.Spec)
+	} else {
+		newHash = computeHash(spec)
+	}
 
 	// do not trigger a canary deployment on manual rollback
 	if cd.Status.LastPromotedSpec == newHash {
